@@ -83,6 +83,9 @@ class CrossWord extends Controller
 	{
 		$this->last_direction = $this->direction;
 		$this->direction = rand( 0, 1 );
+
+		if(!$this->direction && !$this->last_direction)
+			$this->setEmptyValue();
 	}
 
 	private function isVertical()
