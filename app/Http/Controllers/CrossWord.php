@@ -48,6 +48,7 @@ class CrossWord extends Controller
 
 			$this->empty = $width * $heigth;
 			$this->word_num = 0;
+			$this->list = [];
 			$this->cursor = $this->cursor_new = json_decode( json_encode( [ 'vertical' => 0, 'horizontal' => 0 ] ) );
 		}
 	}
@@ -179,11 +180,11 @@ class CrossWord extends Controller
 		return true;
 	}
 
-	private function getOpositeCursor( $use_word_length = true ) 
+	private function getOpositeCursor( $v = false, $h = false, $use_word_length = true ) 
 	{
 		return json_decode( json_encode( [ 
-			'vertical' => ($this->heigth - 1) - $this->cursor->vertical - ( $use_word_length ? ($this->isVertical() ? $this->word_length - 1 : 0) : 0), 
-			'horizontal' => ($this->width - 1) - $this->cursor->horizontal - ( $use_word_length ? ($this->isVertical() ? 0 : $this->word_length - 1) : 0)
+			'vertical' => ($this->heigth - 1) - ( $v!==false ? $v : $this->cursor->vertical ) - ( $use_word_length ? ($this->isVertical() ? $this->word_length - 1 : 0) : 0), 
+			'horizontal' => ($this->width - 1) - ( $h!==false ? $h : $this->cursor->horizontal ) - ( $use_word_length ? ($this->isVertical() ? 0 : $this->word_length - 1) : 0)
 		] ) );
 	}
 
@@ -200,7 +201,7 @@ class CrossWord extends Controller
 
 	private function setEmptyValue()
 	{
-		$oposite = $this->getOpositeCursor( false );
+		$oposite = $this->getOpositeCursor( false, false, false );
 		$this->crossword[ $this->cursor->vertical ][ $this->cursor->horizontal ] = false;
 		$this->crossword[ $oposite->vertical ][ $oposite->horizontal ] = false;
 	}
@@ -213,59 +214,105 @@ class CrossWord extends Controller
 		}
 	}
 
-	public function fill() 
+	private function getFirstPossible($v, $h, $v_dec, $h_dec, $retry) {
+		$col_value = false;
+
+		while ($col_value!==false) {
+			$v -= $v_dec;
+			$h -= $h_dec;
+
+			$col_value = $this->crossword[ $v ][ $h ] ?? false;
+		};
+
+		$v += $v_dec;
+		$h += $h_dec;
+
+		if($v_dec)
+			$v += $retry;
+
+		if($h_dec)
+			$h += $retry;
+
+
+		return json_decode( json_encode( [ 'vertical' => $v, 'horizontal' => $h ] ) );
+	}
+
+	private function placeAWord()
 	{
-		// for ($i=0; $i < 12; $i++) { 
-			$this->defineCursor();
-			$this->sortEmpty();
+		$this->pointDirection();
+		$this->randWordLength();
 
-			$oposite_word = $word = 0;
+		$success = false;
+		$retry = 0;
 
-			while ( !$word ) {
-				$this->pointDirection();
-				$this->randWordLength();
-
-				$fields = $this->getFields( 
-					$this->cursor->vertical, 
-					$this->cursor->horizontal,
-					$this->isVertical() ? 1 : 0,
-					$this->isVertical() ? 0 : 1
-				);
-
-				if( $fields )
-					$oposite_word = $word = Words::find( $fields );
-			}
-
-
-			$filled = $this->setFields(  
-				$this->cursor->vertical, 
+		while (!$success) {
+			$current = $this->getFirstPossible(
+				$this->cursor->vertical,
 				$this->cursor->horizontal,
 				$this->isVertical() ? 1 : 0,
-				$this->isVertical() ? 0 : 1, 
-				$word 
+				$this->isVertical() ? 0 : 1,
+				$retry++
 			);
 
-			if($filled)
-				$this->list[] = $word;
+			if($current==$this->cursor)
+				return;
+
+			$oposite = $this->getOpositeCursor(
+				$current->vertical,
+				$current->horizontal
+			);
+
+			if($current->vertical<0 || $current->horizontal<0 || $oposite->vertical<0 || $oposite->horizontal<0) {
+				$this->randWordLength();
+				continue;
+			}
 
 			$fields = $this->getFields( 
-				$this->getOpositeCursor()->vertical, 
-				$this->getOpositeCursor()->horizontal,
+				$current->vertical, 
+				$current->horizontal,
 				$this->isVertical() ? 1 : 0,
 				$this->isVertical() ? 0 : 1
 			);
 
-			$oposite_word = Words::find( $fields, $this->list );
-			$filled = $this->setFields( 
-				$this->getOpositeCursor()->vertical, 
-				$this->getOpositeCursor()->horizontal,
+			$oposite_fields = $this->getFields( 
+				$oposite->vertical, 
+				$oposite->horizontal,
 				$this->isVertical() ? 1 : 0,
-				$this->isVertical() ? 0 : 1, 
-				$oposite_word
+				$this->isVertical() ? 0 : 1
 			);
 
-			if($filled)
-				$this->list[] = $oposite_word;
+			$word = Words::find( $fields, $this->list );
+			$oposite_word = Words::find( $oposite_fields, $this->list );
+			$success = $word && $oposite_word;
+
+			if($success) {
+				$this->setFields(  
+					$current->vertical, 
+					$current->horizontal,
+					$this->isVertical() ? 1 : 0,
+					$this->isVertical() ? 0 : 1, 
+					$word 
+				);
+
+				$this->setFields(  
+					$oposite->vertical, 
+					$oposite->horizontal,
+					$this->isVertical() ? 1 : 0,
+					$this->isVertical() ? 0 : 1, 
+					$oposite_word
+				);
+			}
+		}
+
+	}
+
+	public function fill() 
+	{
+		// for ($i=0; $i < 2; $i++) { 
+			$this->defineCursor();
+			$this->sortEmpty();
+
+			$this->placeAWord();
 
 			$states = new States();
 			$states->fill([
