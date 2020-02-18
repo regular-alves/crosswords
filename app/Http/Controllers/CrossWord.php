@@ -217,12 +217,12 @@ class CrossWord extends Controller
 	private function getFirstPossible($v, $h, $v_dec, $h_dec, $retry) {
 		$col_value = false;
 
-		while ($col_value!==false) {
+		do {
 			$v -= $v_dec;
 			$h -= $h_dec;
 
 			$col_value = $this->crossword[ $v ][ $h ] ?? false;
-		};
+		}while($col_value!==false);
 
 		$v += $v_dec;
 		$h += $h_dec;
