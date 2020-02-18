@@ -254,7 +254,7 @@ class CrossWord extends Controller
 				$retry++
 			);
 
-			if($current==$this->cursor)
+			if($retry>1 && $current==$this->cursor)
 				return;
 
 			$oposite = $this->getOpositeCursor(
