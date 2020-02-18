@@ -240,6 +240,9 @@ class CrossWord extends Controller
 		return json_decode( json_encode( [ 'vertical' => $v, 'horizontal' => $h ] ) );
 	}
 
+	/**
+	 * @todo validar se palavra não irá se encaixar com letras desconexas
+	 */
 	private function placeAWord()
 	{
 		$this->pointDirection();
