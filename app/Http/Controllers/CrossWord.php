@@ -85,7 +85,10 @@ class CrossWord extends Controller
 		$this->direction = rand( 0, 1 );
 
 		if(!$this->direction && !$this->last_direction)
-			$this->setEmptyValue();
+			$this->setEmptyValue(
+				$this->cursor->vertical,
+				$this->cursor->horizontal
+			);
 	}
 
 	private function isVertical()
@@ -202,22 +205,22 @@ class CrossWord extends Controller
 		}
 	}
 
-	private function setEmptyValue()
+	private function setEmptyValue($v, $h)
 	{
-		$oposite = $this->getOpositeCursor( false, false, false );
-		$this->crossword[ $this->cursor->vertical ][ $this->cursor->horizontal ] = false;
+		$oposite = $this->getOpositeCursor( $v, $h, false );
+		$this->crossword[ $v ][ $h ] = false;
 		$this->crossword[ $oposite->vertical ][ $oposite->horizontal ] = false;
 	}
 
 	private function sortEmpty() 
 	{
 		if(rand(0, 100)>=75) {
-			$this->setEmptyValue();
+			$this->setEmptyValue($this->cursor->vertical, $this->cursor->horizontal);
 			$this->defineCursor();
 		}
 	}
 
-	private function getFirstPossible($v, $h, $v_dec, $h_dec, $retry) {
+	private function getFirstPossible($v, $h, $v_dec, $h_dec) {
 		$col_value = false;
 
 		do {
@@ -230,14 +233,22 @@ class CrossWord extends Controller
 		$v += $v_dec;
 		$h += $h_dec;
 
-		if($v_dec)
-			$v += $retry;
-
-		if($h_dec)
-			$h += $retry;
-
-
 		return json_decode( json_encode( [ 'vertical' => $v, 'horizontal' => $h ] ) );
+	}
+
+	private function isEmpty($fields)
+	{
+		if(!is_array($fields))
+			return true;
+
+		foreach ($fields as $field) {
+			if(!$field)
+				continue;
+
+			return false;
+		}
+
+		return true;
 	}
 
 	/**
@@ -248,20 +259,43 @@ class CrossWord extends Controller
 		$this->pointDirection();
 		$this->randWordLength();
 
-		$success = false;
-		$retry = 0;
+		$success = $overlap = false;
 
 		while (!$success) {
 			$current = $this->getFirstPossible(
 				$this->cursor->vertical,
 				$this->cursor->horizontal,
 				$this->isVertical() ? 1 : 0,
-				$this->isVertical() ? 0 : 1,
-				$retry++
+				$this->isVertical() ? 0 : 1
 			);
 
-			if($retry>1 && $current==$this->cursor)
-				return;
+			if($overlap) {
+				$fields = $this->getFields( 
+					$current->vertical, 
+					$current->horizontal,
+					$this->isVertical() ? 1 : 0,
+					$this->isVertical() ? 0 : 1
+				);
+
+				if($this->isEmpty($fields)) {
+					$oposite = $this->getOpositeCursor(
+						$this->cursor->vertical,
+						$this->cursor->horizontal
+					);
+
+					$this->setEmptyValue(
+						$this->cursor->vertical,
+						$this->cursor->horizontal
+					);
+
+					$this->setEmptyValue(
+						$oposite->vertical,
+						$oposite->horizontal
+					);
+				}
+			}else {
+				$overlap = true;
+			}
 
 			$oposite = $this->getOpositeCursor(
 				$current->vertical,
