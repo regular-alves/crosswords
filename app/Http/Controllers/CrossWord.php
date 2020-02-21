@@ -32,7 +32,7 @@ class CrossWord extends Controller
 			$this->setWidth( $state['width'] );
 			$this->setHeigth( $state['heigth'] );
 			$this->setDifficulty( $state['difficulty'] );
-			$this->set_crossword( json_decode($state['vector']) );
+			$this->setCrossword( json_decode($state['vector']) );
 
 			$this->empty = $state['empty'];
 			$this->word_num = $state['word_num'];
@@ -44,7 +44,7 @@ class CrossWord extends Controller
 			$this->setWidth( $width );
 			$this->setHeigth( $heigth );
 			$this->setDifficulty( $difficulty );	
-			$this->set_crossword( $this->create_vector() );
+			$this->setCrossword( $this->createVector() );
 
 			$this->empty = $width * $heigth;
 			$this->word_num = 0;
@@ -130,27 +130,27 @@ class CrossWord extends Controller
 		$this->difficulty = $difficulty;
 	}
 
-	private function set_crossword( array $crossword ) 
+	private function setCrossword( array $crossword ) 
 	{
 		$this->crossword = $crossword;
 	}
 
-	private function set_empty( int $empty ) 
+	private function setEmpty( int $empty ) 
 	{
 		$this->empty = $empty;
 	}
 
-	private function create_vector() 
+	private function createVector() 
 	{
 		return array_fill( 0, $this->heigth, array_fill( 0, $this->width, '') );
 	}
 
-	public function get_vector() 
+	public function getVector() 
 	{
 		return $this->crossword;
 	}
 
-	private function get_empty( int $empty ) 
+	private function getEmpty( int $empty ) 
 	{
 		return $this->empty;
 	}
